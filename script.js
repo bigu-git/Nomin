@@ -281,7 +281,7 @@
   const audio = document.getElementById('bg-music');
 
   /* inject a tiny equalizer visualizer purely for animation flair */
-  const eq = document.createElement('div');
+  const eq = document.createElement('span');
   eq.className = 'eq-bars';
   eq.innerHTML = '<span></span><span></span><span></span>';
   btn.appendChild(eq);
