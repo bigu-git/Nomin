@@ -15,6 +15,9 @@
   --white:       #ffffff;
   --glow-rose:   rgba(217,131,158,0.18);
   --glow-warm:   rgba(230,200,136,0.22);
+  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  --px: 0px;
+  --py: 0px;
 }
 
 html { scroll-behavior: smooth; }
@@ -30,6 +33,12 @@ body {
   font-weight: 400;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  animation: page-in 1s var(--ease-premium) forwards;
+}
+@keyframes page-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ─── CANVAS ─── */
@@ -57,8 +66,9 @@ body {
   font-size: 18px;
   color: var(--rose);
   box-shadow: 0 6px 20px rgba(217,131,158,0.12), inset 0 0 0 1px rgba(255,255,255,0.8);
-  transition: transform 0.2s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.35s var(--ease-premium), box-shadow 0.3s ease, border-color 0.3s ease;
 }
+#music-btn:hover { transform: scale(1.07); }
 #music-btn:active { transform: scale(0.91); }
 #music-btn.playing {
   border-color: rgba(217,131,158,0.5);
@@ -77,6 +87,47 @@ body {
 @keyframes pulse-ring {
   0%   { transform: scale(1); opacity: 0.7; }
   100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* note glyph punch feedback on toggle */
+.note {
+  display: inline-block;
+  transition: transform 0.4s var(--ease-premium);
+}
+#music-btn.note-punch .note { animation: note-punch 0.45s var(--ease-premium); }
+@keyframes note-punch {
+  0%   { transform: scale(1) rotate(0deg); }
+  40%  { transform: scale(1.35) rotate(-12deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* tiny equalizer bars, injected by script.js, only visible while playing */
+.eq-bars {
+  position: absolute;
+  bottom: 7px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+#music-btn.playing .eq-bars { opacity: 0.9; }
+.eq-bars span {
+  width: 2px;
+  background: var(--rose);
+  border-radius: 1px;
+  height: 3px;
+  animation: eq-bounce 0.9s ease-in-out infinite;
+}
+.eq-bars span:nth-child(1) { animation-delay: -0.6s; }
+.eq-bars span:nth-child(2) { animation-delay: -0.3s; }
+.eq-bars span:nth-child(3) { animation-delay: 0s; }
+@keyframes eq-bounce {
+  0%, 100% { height: 3px; }
+  50%      { height: 9px; }
 }
 
 /* ─── SECTIONS ─── */
@@ -98,17 +149,18 @@ section {
   overflow: hidden;
 }
 
-/* Soft radial glow behind hero text */
+/* Soft radial glow behind hero text — reacts to pointer parallax */
 #hero::before {
   content: '';
   position: absolute;
   top: 10%; left: 50%;
-  transform: translateX(-50%);
+  transform: translate(calc(-50% + var(--px)), var(--py));
   width: min(600px, 140vw);
   height: min(600px, 140vw);
   background: radial-gradient(circle, rgba(252,228,235,0.9) 0%, transparent 65%);
   pointer-events: none;
   z-index: 0;
+  transition: transform 0.6s var(--ease-premium);
 }
 
 .hero-eyebrow {
@@ -119,7 +171,7 @@ section {
   color: var(--rose);
   letter-spacing: 0.06em;
   opacity: 0;
-  animation: fade-up 1.2s cubic-bezier(0.25,0.46,0.45,0.94) forwards 0.3s;
+  animation: fade-up 1.2s var(--ease-premium) forwards 0.3s;
   margin-bottom: 14px;
 }
 
@@ -132,20 +184,43 @@ section {
   line-height: 1.1;
   letter-spacing: -0.02em;
   color: var(--text-main);
+}
+/* fallback (no-JS / before split runs) */
+.hero-title.pre-split {
   opacity: 0;
-  animation: fade-up 1.2s cubic-bezier(0.25,0.46,0.45,0.94) forwards 0.55s;
+  animation: fade-up 1.2s var(--ease-premium) forwards 0.55s;
+}
+
+/* word-reveal system used once script.js splits the hero title into words */
+.hero-title .word { display: inline-block; overflow: hidden; vertical-align: top; }
+.hero-title .word-inner {
+  display: inline-block;
+  transform: translateY(115%) rotate(4deg);
+  opacity: 0;
+  animation: word-rise 0.95s var(--ease-premium) forwards;
+  animation-delay: calc(0.5s + var(--i, 0) * 0.06s);
+}
+@keyframes word-rise {
+  to { transform: translateY(0) rotate(0deg); opacity: 1; }
 }
 
 .hero-title em {
   display: block;
   font-style: italic;
   font-size: clamp(3.2rem, 13vw, 6.5rem);
-  background: linear-gradient(145deg, var(--gold) 0%, var(--rose) 55%, #b07840 100%);
+  background: linear-gradient(110deg, var(--gold) 0%, var(--rose) 45%, #b07840 65%, var(--gold) 100%);
+  background-size: 250% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   padding-top: 6px;
   letter-spacing: -0.03em;
+  animation: shimmer-sweep 6s ease-in-out infinite 2.4s;
+}
+@keyframes shimmer-sweep {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .hero-date {
@@ -157,17 +232,23 @@ section {
   color: var(--text-muted);
   margin-top: 22px;
   opacity: 0;
-  animation: fade-up 1.2s cubic-bezier(0.25,0.46,0.45,0.94) forwards 0.85s;
+  animation: fade-up 1.2s var(--ease-premium) forwards 0.85s;
   letter-spacing: 0.12em;
 }
 
-/* Candle */
+/* Candle — now with pointer parallax drift */
 .candle-wrap {
   position: relative;
   z-index: 1;
   margin: 0 auto 30px;
   opacity: 0;
-  animation: fade-up 1.2s ease forwards 1.1s;
+  translate: 0 30px;
+  animation: candle-rise 1.2s ease forwards 1.1s;
+  transform: translate(var(--px), var(--py));
+  transition: transform 0.5s var(--ease-premium);
+}
+@keyframes candle-rise {
+  to { opacity: 1; translate: 0 0; }
 }
 .candle { width: 30px; margin: 0 auto; position: relative; }
 .candle-body {
@@ -191,7 +272,7 @@ section {
   width: 13px; height: 24px;
   background: radial-gradient(ellipse at 50% 70%, #fff 0%, #ffe58a 35%, #ffb070 65%, transparent 100%);
   border-radius: 50% 50% 40% 40%;
-  animation: flicker 0.38s ease-in-out infinite alternate;
+  animation: flicker 1.9s ease-in-out infinite;
   filter: blur(0.8px);
 }
 .flame::after {
@@ -200,7 +281,7 @@ section {
   width: 6px; height: 12px;
   background: radial-gradient(ellipse at 50% 60%, #fff 0%, #fffde0 60%, transparent 100%);
   border-radius: 50% 50% 40% 40%;
-  animation: flicker 0.28s ease-in-out infinite alternate-reverse;
+  animation: flicker-inner 1.4s ease-in-out infinite;
 }
 .glow-ring {
   position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
@@ -209,9 +290,22 @@ section {
   animation: glow-pulse 2.8s ease-in-out infinite alternate; pointer-events: none;
   mix-blend-mode: multiply;
 }
+/* multi-stop flicker for a more organic, less-mechanical flame */
 @keyframes flicker {
-  0%   { transform: translateX(-50%) scaleX(1) rotate(-1.5deg); }
-  100% { transform: translateX(-50%) scaleX(0.86) rotate(1.5deg) scaleY(1.05); }
+  0%   { transform: translateX(-50%) scaleX(1) scaleY(1) rotate(-1.5deg); }
+  18%  { transform: translateX(-52%) scaleX(0.9) scaleY(1.06) rotate(1.8deg); }
+  36%  { transform: translateX(-49%) scaleX(1.06) scaleY(0.95) rotate(-2.4deg); }
+  54%  { transform: translateX(-51%) scaleX(0.86) scaleY(1.1) rotate(1.2deg); }
+  72%  { transform: translateX(-50%) scaleX(1.03) scaleY(0.98) rotate(-1deg); }
+  88%  { transform: translateX(-48%) scaleX(0.93) scaleY(1.04) rotate(2deg); }
+  100% { transform: translateX(-50%) scaleX(1) scaleY(1) rotate(-1.5deg); }
+}
+@keyframes flicker-inner {
+  0%   { transform: translateX(-50%) scale(1); opacity: 1; }
+  30%  { transform: translateX(-53%) scale(0.88); opacity: 0.85; }
+  55%  { transform: translateX(-47%) scale(1.08); opacity: 1; }
+  80%  { transform: translateX(-51%) scale(0.94); opacity: 0.9; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 @keyframes glow-pulse {
   0%   { opacity: 0.4; transform: translateX(-50%) scale(0.85); }
@@ -245,9 +339,10 @@ section {
   color: var(--rose);
   margin-bottom: 14px;
   opacity: 0; transform: translateY(22px);
-  transition: opacity 1s ease, transform 1s ease;
+  filter: blur(6px);
+  transition: opacity 1s var(--ease-premium), transform 1s var(--ease-premium), filter 1s var(--ease-premium);
 }
-.section-tag.visible { opacity: 1; transform: none; }
+.section-tag.visible { opacity: 1; transform: none; filter: blur(0); }
 
 .section-title {
   font-family: 'Playfair Display', serif;
@@ -258,9 +353,10 @@ section {
   text-align: center;
   margin-bottom: 0;
   opacity: 0; transform: translateY(22px);
-  transition: opacity 1s ease 0.12s, transform 1s ease 0.12s;
+  filter: blur(6px);
+  transition: opacity 1s var(--ease-premium) 0.12s, transform 1s var(--ease-premium) 0.12s, filter 1s var(--ease-premium) 0.12s;
 }
-.section-title.visible { opacity: 1; transform: none; }
+.section-title.visible { opacity: 1; transform: none; filter: blur(0); }
 
 /* ══════════════ MESSAGE ══════════════ */
 #message {
@@ -285,8 +381,8 @@ section {
   position: relative;
   overflow: hidden;
   margin-top: 32px;
-  opacity: 0; transform: translateY(32px);
-  transition: opacity 1.2s ease 0.2s, transform 1.2s ease 0.2s;
+  opacity: 0; transform: translateY(32px) scale(0.97);
+  transition: opacity 1.2s var(--ease-premium) 0.2s, transform 1.2s var(--ease-premium) 0.2s;
 }
 /* Subtle pink corner accent */
 .message-card::after {
@@ -306,7 +402,11 @@ section {
   font-family: 'Playfair Display', serif;
   margin-bottom: -16px;
   display: block;
+  transform: scale(0.4) rotate(-8deg);
+  opacity: 0;
+  transition: transform 0.8s var(--ease-premium) 0.5s, opacity 0.8s var(--ease-premium) 0.5s;
 }
+.message-card.visible .message-quote { transform: scale(1) rotate(0deg); opacity: 1; }
 
 .message-text {
   font-size: clamp(0.97rem, 3.4vw, 1.08rem);
@@ -314,7 +414,14 @@ section {
   color: var(--text-main);
   margin-bottom: 22px;
   font-weight: 400;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.9s var(--ease-premium), transform 0.9s var(--ease-premium);
 }
+.message-card.visible .message-text:nth-of-type(1) { transition-delay: 0.55s; }
+.message-card.visible .message-text:nth-of-type(2) { transition-delay: 0.75s; }
+.message-card.visible .message-text:nth-of-type(3) { transition-delay: 0.95s; }
+.message-card.visible .message-text { opacity: 1; transform: none; }
 .message-text:last-of-type { margin-bottom: 0; }
 
 /* Thin separator between paragraphs */
@@ -330,7 +437,11 @@ section {
   text-align: right;
   margin-top: 28px;
   display: block;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.9s var(--ease-premium) 1.15s, transform 0.9s var(--ease-premium) 1.15s;
 }
+.message-card.visible .message-sig { opacity: 1; transform: none; }
 
 /* ══════════════ CLOSING ══════════════ */
 #closing {
@@ -345,7 +456,7 @@ section {
   opacity: 0;
   transition: opacity 1s ease;
   margin-bottom: 28px;
-  animation: soft-float 4.5s ease-in-out infinite;
+  animation: soft-float 4.5s ease-in-out infinite, heartbeat 2.4s ease-in-out infinite;
   animation-play-state: paused;
 }
 .closing-heart.visible {
@@ -353,8 +464,15 @@ section {
   animation-play-state: running;
 }
 @keyframes soft-float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50%        { transform: translateY(-14px) scale(1.04); }
+  0%, 100% { translate: 0 0; }
+  50%        { translate: 0 -14px; }
+}
+@keyframes heartbeat {
+  0%, 100% { scale: 1; }
+  14%      { scale: 1.12; }
+  28%      { scale: 1; }
+  42%      { scale: 1.08; }
+  56%      { scale: 1; }
 }
 
 .closing-title {
@@ -365,9 +483,10 @@ section {
   color: var(--text-main);
   margin-bottom: 18px;
   opacity: 0; transform: translateY(22px);
-  transition: opacity 1s ease 0.15s, transform 1s ease 0.15s;
+  filter: blur(6px);
+  transition: opacity 1s var(--ease-premium) 0.15s, transform 1s var(--ease-premium) 0.15s, filter 1s var(--ease-premium) 0.15s;
 }
-.closing-title.visible { opacity: 1; transform: none; }
+.closing-title.visible { opacity: 1; transform: none; filter: blur(0); }
 
 .closing-sub {
   font-family: 'Lato', sans-serif;
@@ -422,13 +541,31 @@ section {
   to { transform: scale(1); opacity: 0; }
 }
 
+/* ─── CURSOR SPARKLE TRAIL (desktop pointer only, injected by script.js) ─── */
+.cursor-spark {
+  position: fixed;
+  z-index: 9998;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(244,194,208,0.6) 55%, transparent 75%);
+  animation: spark-fade 1.1s var(--ease-premium) forwards;
+}
+@keyframes spark-fade {
+  0%   { opacity: 0.85; transform: scale(0.4) translateY(0); }
+  100% { opacity: 0; transform: scale(1.1) translateY(-18px); }
+}
+
 /* ─── REDUCED MOTION ─── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
-  .reveal, .message-card, .closing-heart, .closing-title, .closing-sub, .stars-row {
-    opacity: 1 !important; transform: none !important; transition: none !important;
+  body { opacity: 1 !important; animation: none !important; }
+  .reveal, .message-card, .message-text, .message-quote, .message-sig, .closing-heart, .closing-title, .closing-sub, .stars-row {
+    opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important;
   }
-  .hero-eyebrow, .hero-title, .hero-date, .candle-wrap, .hero-scroll {
-    opacity: 1 !important; animation: none !important;
+  .hero-eyebrow, .hero-title, .hero-date, .candle-wrap, .hero-scroll, .hero-title .word-inner {
+    opacity: 1 !important; animation: none !important; transform: none !important;
   }
+  .cursor-spark { display: none !important; }
 }
+
+/* narrow-viewport pointer parallax off (touch devices set --px/--py to 0 anyway via script.js) */
