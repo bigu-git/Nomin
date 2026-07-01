@@ -1,3 +1,88 @@
+/* ═══════════ HERO WORD-REVEAL SPLIT ═══════════ */
+(function () {
+  function wrapWords(node) {
+    Array.from(node.childNodes).forEach(child => {
+      if (child.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        child.textContent.split(/(\s+)/).forEach(chunk => {
+          if (chunk.trim() === '') {
+            frag.appendChild(document.createTextNode(chunk));
+          } else {
+            const outer = document.createElement('span');
+            outer.className = 'word';
+            const inner = document.createElement('span');
+            inner.className = 'word-inner';
+            inner.textContent = chunk;
+            outer.appendChild(inner);
+            frag.appendChild(outer);
+          }
+        });
+        node.replaceChild(frag, child);
+      } else if (child.nodeType === 1 && child.tagName !== 'BR') {
+        wrapWords(child);
+      }
+    });
+  }
+
+  const title = document.querySelector('.hero-title');
+  if (title) {
+    wrapWords(title);
+    let i = 0;
+    title.querySelectorAll('.word-inner').forEach(w => {
+      w.style.setProperty('--i', i++);
+    });
+  }
+})();
+
+/* ═══════════ POINTER PARALLAX (hero glow + candle) ═══════════ */
+(function () {
+  const root = document.documentElement;
+  let ticking = false;
+  const MAX = 14;
+
+  function apply(nx, ny) {
+    root.style.setProperty('--px', (nx * MAX).toFixed(2) + 'px');
+    root.style.setProperty('--py', (ny * MAX).toFixed(2) + 'px');
+  }
+
+  window.addEventListener('mousemove', e => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+      const ny = (e.clientY / window.innerHeight - 0.5) * 2;
+      apply(nx, ny);
+      ticking = false;
+    });
+  }, { passive: true });
+
+  window.addEventListener('mouseleave', () => apply(0, 0));
+})();
+
+/* ═══════════ CURSOR SPARKLE TRAIL (desktop pointer only) ═══════════ */
+(function () {
+  if (window.matchMedia('(pointer: coarse)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  let lastSpawn = 0;
+  window.addEventListener('mousemove', e => {
+    const now = performance.now();
+    if (now - lastSpawn < 90) return;
+    if (Math.random() > 0.55) return;
+    lastSpawn = now;
+
+    const s = document.createElement('div');
+    s.className = 'cursor-spark';
+    const size = 4 + Math.random() * 5;
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.left = (e.clientX - size / 2) + 'px';
+    s.style.top = (e.clientY - size / 2) + 'px';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1200);
+  }, { passive: true });
+})();
+
 /* ═══════════ FLOATING PETALS CANVAS ═══════════ */
 (function () {
   const canvas = document.getElementById('petals-canvas');
@@ -5,6 +90,7 @@
   let dpr;
 
   const SYMS   = ['✿', '✧', '♡', '·', '✦', '❀', '✽'];
+  const TWINKLE_SYMS = new Set(['·', '✦']);
   const COLORS = [
     'rgba(252,200,215,0.7)',
     'rgba(234,216,200,0.65)',
@@ -13,6 +99,13 @@
     'rgba(232,200,136,0.5)',
     'rgba(244,194,208,0.6)',
   ];
+
+  let pointerX = -9999, pointerY = -9999;
+  const hasFinePointer = !window.matchMedia('(pointer: coarse)').matches;
+  if (hasFinePointer) {
+    window.addEventListener('mousemove', e => { pointerX = e.clientX; pointerY = e.clientY; }, { passive: true });
+    window.addEventListener('mouseleave', () => { pointerX = -9999; pointerY = -9999; });
+  }
 
   function resize() {
     dpr = window.devicePixelRatio || 1;
@@ -35,19 +128,40 @@
       this.vy     = burst ? -(1.2 + Math.random() * 2.2) : 0.28 + Math.random() * 0.55;
       this.vx     = (Math.random() - 0.5) * (burst ? 2.8 : 0.5);
       this.op     = burst ? 0.95 : 0.35 + Math.random() * 0.45;
+      this.baseOp = this.op;
       this.fade   = burst ? 0.014 + Math.random() * 0.009 : 0.0004;
       this.rot    = Math.random() * Math.PI * 2;
       this.rotV   = (Math.random() - 0.5) * 0.028;
       this.drift  = Math.random() * 100;
+      this.twinklePhase = Math.random() * Math.PI * 2;
       this.burst  = !!burst;
       this.vw = vw; this.vh = vh;
     }
-    step() {
+    step(t, windX) {
       this.y   += this.vy;
-      this.x   += this.vx + Math.sin((this.y + this.drift) * 0.012) * 0.35;
+      this.x   += this.vx + windX + Math.sin((this.y + this.drift) * 0.012) * 0.35;
       this.rot += this.rotV;
-      if (this.burst) this.op -= this.fade;
-      else if (this.y > this.vh + 30) this.reset(null);
+
+      /* gentle cursor repulsion for ambient petals */
+      if (!this.burst) {
+        const dx = this.x - pointerX, dy = this.y - pointerY;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < 6400) {
+          const dist = Math.sqrt(distSq) || 1;
+          const force = (80 - dist) / 80;
+          this.x += (dx / dist) * force * 2.2;
+          this.y += (dy / dist) * force * 2.2;
+        }
+      }
+
+      if (this.burst) {
+        this.op -= this.fade;
+      } else {
+        if (TWINKLE_SYMS.has(this.sym)) {
+          this.op = this.baseOp * (0.55 + 0.45 * Math.sin(t * 0.0022 + this.twinklePhase));
+        }
+        if (this.y > this.vh + 30) this.reset(null);
+      }
     }
     draw() {
       ctx.save();
@@ -74,15 +188,16 @@
     ps.push(p);
   }
 
-  (function loop() {
+  (function loop(t) {
+    const windX = Math.sin(t * 0.00035) * 0.4;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     for (let i = ps.length - 1; i >= 0; i--) {
-      ps[i].step();
+      ps[i].step(t, windX);
       ps[i].draw();
       if (ps[i].dead()) ps.splice(i, 1);
     }
     requestAnimationFrame(loop);
-  })();
+  })(0);
 
   /* Debounced Canvas Resize Listener */
   let resizeTimer;
@@ -105,7 +220,7 @@
   }
 
   let isTouch = false;
-  
+
   document.addEventListener('touchstart', e => {
     isTouch = true;
     burst(e.touches[0].clientX, e.touches[0].clientY);
@@ -140,7 +255,13 @@
   const btn  = document.getElementById('music-btn');
   const note = btn.querySelector('.note');
   const audio = document.getElementById('bg-music');
-  
+
+  /* inject a tiny equalizer visualizer purely for animation flair */
+  const eq = document.createElement('div');
+  eq.className = 'eq-bars';
+  eq.innerHTML = '<span></span><span></span><span></span>';
+  btn.appendChild(eq);
+
   let playing = false;
   let actx = null;
   let sourceNode = null;
@@ -153,9 +274,9 @@
       sourceNode = actx.createMediaElementSource(audio);
       sourceNode.connect(actx.destination);
     }
-    
+
     playing = !playing;
-    
+
     if (playing) {
       audio.play()
         .then(() => {
@@ -172,8 +293,12 @@
         actx.suspend();
       }
     }
-    
+
     btn.classList.toggle('playing', playing);
     note.textContent = playing ? '♫' : '♪';
+
+    btn.classList.remove('note-punch');
+    void btn.offsetWidth; /* restart animation */
+    btn.classList.add('note-punch');
   });
 })();
