@@ -435,3 +435,22 @@
     }
   });
 })();
+
+/* ═══════════ AESTHETIC COLLAGE — decorative player card toggle ═══════════ */
+/* Purely visual (play/pause icon swap on the collage player card); it is
+   not wired to real playback — the floating #music-btn above handles that. */
+(function () {
+  const toggle = document.querySelector('.player-card .player-toggle');
+  if (!toggle) return;
+  const iconPlay = toggle.querySelector('.icon-play');
+  const iconPause = toggle.querySelector('.icon-pause');
+  let paused = false;
+
+  toggle.addEventListener('click', () => {
+    paused = !paused;
+    iconPlay.hidden = !paused;
+    iconPause.hidden = paused;
+    toggle.setAttribute('aria-pressed', String(!paused));
+    toggle.setAttribute('aria-label', paused ? 'Play' : 'Pause');
+  });
+})();
