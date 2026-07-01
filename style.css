@@ -67,6 +67,7 @@ body {
   color: var(--rose);
   box-shadow: 0 6px 20px rgba(217,131,158,0.12), inset 0 0 0 1px rgba(255,255,255,0.8);
   transition: transform 0.35s var(--ease-premium), box-shadow 0.3s ease, border-color 0.3s ease;
+  touch-action: manipulation;
 }
 #music-btn:hover { transform: scale(1.07); }
 #music-btn:active { transform: scale(0.91); }
@@ -185,12 +186,6 @@ section {
   letter-spacing: -0.02em;
   color: var(--text-main);
 }
-/* fallback (no-JS / before split runs) */
-.hero-title.pre-split {
-  opacity: 0;
-  animation: fade-up 1.2s var(--ease-premium) forwards 0.55s;
-}
-
 /* word-reveal system used once script.js splits the hero title into words */
 .hero-title .word { display: inline-block; overflow: hidden; vertical-align: top; }
 .hero-title .word-inner {
@@ -208,6 +203,7 @@ section {
   display: block;
   font-style: italic;
   font-size: clamp(3.2rem, 13vw, 6.5rem);
+  color: var(--gold); /* fallback for browsers without background-clip: text support */
   background: linear-gradient(110deg, var(--gold) 0%, var(--rose) 45%, #b07840 65%, var(--gold) 100%);
   background-size: 250% 100%;
   -webkit-background-clip: text;
@@ -563,6 +559,7 @@ section {
 /* ─── REDUCED MOTION ─── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  html { scroll-behavior: auto; }
   body { opacity: 1 !important; animation: none !important; }
   .reveal, .message-card, .message-text, .message-quote, .message-sig, .closing-heart, .closing-title, .closing-sub, .stars-row {
     opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important;
