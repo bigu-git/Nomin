@@ -114,6 +114,15 @@
     canvas.style.width  = window.innerWidth  + 'px';
     canvas.style.height = window.innerHeight + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    /* keep ambient petal density consistent with viewport width */
+    const targetN = Math.min(38, Math.floor(window.innerWidth / 11));
+    const ambientCount = ps.filter(p => !p.burst).length;
+    for (let i = ambientCount; i < targetN; i++) {
+      const p = new Petal(null);
+      p.y = Math.random() * window.innerHeight;
+      ps.push(p);
+    }
   }
 
   class Petal {
@@ -160,7 +169,7 @@
         if (TWINKLE_SYMS.has(this.sym)) {
           this.op = this.baseOp * (0.55 + 0.45 * Math.sin(t * 0.0022 + this.twinklePhase));
         }
-        if (this.y > this.vh + 30) this.reset(null);
+        if (this.y > window.innerHeight + 30) this.reset(null);
       }
     }
     draw() {
@@ -188,6 +197,14 @@
     ps.push(p);
   }
 
+  /* Debounced Canvas Resize Listener */
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resize, 150);
+  });
+  resize(); /* must run before the first frame — sets dpr, avoiding a NaN clearRect */
+
   (function loop(t) {
     const windX = Math.sin(t * 0.00035) * 0.4;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
@@ -198,14 +215,6 @@
     }
     requestAnimationFrame(loop);
   })(0);
-
-  /* Debounced Canvas Resize Listener */
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(resize, 150);
-  });
-  resize();
 
   /* Touch / click burst */
   function burst(x, y) {
@@ -220,10 +229,25 @@
   }
 
   let isTouch = false;
+  let touchStartX = 0, touchStartY = 0, touchStartT = 0;
 
   document.addEventListener('touchstart', e => {
+    if (e.target.closest('#music-btn')) return;
     isTouch = true;
-    burst(e.touches[0].clientX, e.touches[0].clientY);
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchStartT = performance.now();
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!isTouch) return;
+    if (e.target.closest('#music-btn')) return;
+    const t = e.changedTouches[0];
+    const moved = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 12;
+    const heldTooLong = performance.now() - touchStartT > 500;
+    /* Only burst on an actual tap, not a scroll drag or long-press */
+    if (!moved && !heldTooLong) burst(t.clientX, t.clientY);
   }, { passive: true });
 
   document.addEventListener('click', e => {
@@ -295,6 +319,7 @@
     }
 
     btn.classList.toggle('playing', playing);
+    btn.setAttribute('aria-pressed', String(playing));
     note.textContent = playing ? '♫' : '♪';
 
     btn.classList.remove('note-punch');
