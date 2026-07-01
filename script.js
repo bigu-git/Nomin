@@ -84,6 +84,7 @@
     requestAnimationFrame(loop);
   })();
 
+  /* Debounced Canvas Resize Listener */
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
@@ -91,9 +92,11 @@
   });
   resize();
 
+  /* Touch / click burst */
   function burst(x, y) {
     const n = 7 + Math.floor(Math.random() * 5);
     for (let i = 0; i < n; i++) ps.push(new Petal({ x, y }));
+    /* White ripple */
     const r = document.createElement('div');
     r.className = 'ripple';
     r.style.cssText = `width:90px;height:90px;left:${x-45}px;top:${y-45}px`;
@@ -110,6 +113,7 @@
 
   document.addEventListener('click', e => {
     if (e.target.closest('#music-btn')) return;
+    /* Prevent double execution on mobile devices */
     if (isTouch) {
       isTouch = false;
       return;
@@ -142,6 +146,7 @@
   let sourceNode = null;
 
   btn.addEventListener('click', () => {
+    /* Initialize AudioContext purely on user interaction */
     if (!actx) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       actx = new AudioContext();
@@ -154,6 +159,7 @@
     if (playing) {
       audio.play()
         .then(() => {
+          /* explicitly resume context if suspended */
           if (actx.state === 'suspended') {
             actx.resume();
           }
@@ -161,6 +167,7 @@
         .catch(err => console.error("Audio playback failed:", err));
     } else {
       audio.pause();
+      /* explicitly suspend context for performance cleanup */
       if (actx.state === 'running') {
         actx.suspend();
       }
