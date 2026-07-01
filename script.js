@@ -115,9 +115,14 @@
     canvas.style.height = window.innerHeight + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    /* keep ambient petal density consistent with viewport width */
+    /* keep ambient petal density consistent with viewport width (grow AND shrink to avoid unbounded growth) */
     const targetN = Math.min(38, Math.floor(window.innerWidth / 11));
-    const ambientCount = ps.filter(p => !p.burst).length;
+    let ambientCount = 0;
+    for (let i = ps.length - 1; i >= 0; i--) {
+      if (ps[i].burst) continue;
+      ambientCount++;
+      if (ambientCount > targetN) ps.splice(i, 1);
+    }
     for (let i = ambientCount; i < targetN; i++) {
       const p = new Petal(null);
       p.y = Math.random() * window.innerHeight;
@@ -190,12 +195,6 @@
   }
 
   const ps = [];
-  const N  = Math.min(38, Math.floor(window.innerWidth / 11));
-  for (let i = 0; i < N; i++) {
-    const p = new Petal(null);
-    p.y = Math.random() * window.innerHeight;
-    ps.push(p);
-  }
 
   /* Debounced Canvas Resize Listener */
   let resizeTimer;
@@ -203,7 +202,7 @@
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(resize, 150);
   });
-  resize(); /* must run before the first frame — sets dpr, avoiding a NaN clearRect */
+  resize(); /* seeds ambient petals, sets dpr, and avoids a NaN clearRect on first frame */
 
   (function loop(t) {
     const windX = Math.sin(t * 0.00035) * 0.4;
@@ -299,31 +298,36 @@
       sourceNode.connect(actx.destination);
     }
 
-    playing = !playing;
+    function syncUI() {
+      btn.classList.toggle('playing', playing);
+      btn.setAttribute('aria-pressed', String(playing));
+      note.textContent = playing ? '♫' : '♪';
+      btn.classList.remove('note-punch');
+      void btn.offsetWidth; /* restart animation */
+      btn.classList.add('note-punch');
+    }
 
-    if (playing) {
-      audio.play()
-        .then(() => {
-          /* explicitly resume context if suspended */
-          if (actx.state === 'suspended') {
-            actx.resume();
-          }
-        })
-        .catch(err => console.error("Audio playback failed:", err));
+    const wantsToPlay = !playing;
+
+    if (wantsToPlay) {
+      /* resume context first so audio is audible as soon as playback starts */
+      const resumeIfNeeded = actx.state === 'suspended' ? actx.resume() : Promise.resolve();
+      resumeIfNeeded
+        .then(() => audio.play())
+        .then(() => { playing = true; syncUI(); })
+        .catch(err => {
+          console.error("Audio playback failed:", err);
+          playing = false;
+          syncUI();
+        });
     } else {
       audio.pause();
       /* explicitly suspend context for performance cleanup */
       if (actx.state === 'running') {
         actx.suspend();
       }
+      playing = false;
+      syncUI();
     }
-
-    btn.classList.toggle('playing', playing);
-    btn.setAttribute('aria-pressed', String(playing));
-    note.textContent = playing ? '♫' : '♪';
-
-    btn.classList.remove('note-punch');
-    void btn.offsetWidth; /* restart animation */
-    btn.classList.add('note-punch');
   });
 })();
