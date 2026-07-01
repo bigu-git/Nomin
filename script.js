@@ -18,7 +18,7 @@
           }
         });
         node.replaceChild(frag, child);
-      } else if (child.nodeType === 1 && child.tagName !== 'BR') {
+      } else if (child.nodeType === 1 && child.tagName !== 'BR' && child.tagName !== 'EM') {
         wrapWords(child);
       }
     });
