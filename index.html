@@ -2,10 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="description" content="A birthday page for Nomin." />
 <meta name="theme-color" content="#fdfbf7" />
+<meta name="color-scheme" content="light" />
+
 <title>Happy 19th Birthday, Nomin 🌸</title>
+
+<!-- Open Graph / link-preview polish -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Happy 19th Birthday, Nomin 🌸" />
+<meta property="og:description" content="A birthday page for Nomin." />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Happy 19th Birthday, Nomin 🌸" />
+<meta name="twitter:description" content="A birthday page for Nomin." />
+
+<!-- Icons -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Nomin 🌸" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lato:wght@300;400;500&family=Dancing+Script:wght@500;700&display=swap" rel="stylesheet" />
@@ -13,19 +32,22 @@
 </head>
 <body>
 
-<canvas id="petals-canvas"></canvas>
+<canvas id="petals-canvas" aria-hidden="true"></canvas>
 
-<button id="music-btn" type="button" aria-label="Toggle music" aria-pressed="false">
+<button id="music-btn" type="button" aria-label="Play background music" aria-pressed="false">
   <span class="note" aria-hidden="true">♪</span>
   <span id="music-pulse" aria-hidden="true"></span>
 </button>
 
 <audio id="bg-music" loop preload="none">
   <source src="music.mp3" type="audio/mpeg" />
+  Your browser does not support background audio playback.
 </audio>
 
+<main>
+
 <section id="hero">
-  <div class="candle-wrap">
+  <div class="candle-wrap" aria-hidden="true">
     <div class="candle">
       <div class="glow-ring"></div>
       <div class="flame"></div>
@@ -42,7 +64,7 @@
 
   <p class="hero-date"><span lang="mn">Миний хайр</span> &nbsp;·&nbsp; My Love</p>
 
-  <div class="hero-scroll">
+  <div class="hero-scroll" aria-hidden="true">
     <span>Scroll</span>
     <div class="scroll-line"></div>
   </div>
@@ -80,7 +102,7 @@
 
   <p class="closing-sub reveal">Happy birthday, My princess 🌸</p>
 
-  <div class="stars-row reveal">
+  <div class="stars-row reveal" aria-hidden="true">
     <div class="star-dot"></div>
     <div class="star-dot"></div>
     <div class="star-dot"></div>
@@ -89,6 +111,8 @@
   </div>
 </section>
 
-<script src="script.js"></script>
+</main>
+
+<script src="script.js" defer></script>
 </body>
 </html>
