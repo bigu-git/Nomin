@@ -215,7 +215,12 @@ section {
   background-clip: text;
   padding-top: 6px;
   letter-spacing: -0.03em;
-  animation: shimmer-sweep 6s ease-in-out infinite 2.4s;
+  opacity: 0;
+  transform: translateY(40%) rotate(3deg);
+  animation: em-rise 0.95s var(--ease-premium) forwards 0.7s, shimmer-sweep 6s ease-in-out infinite 2.4s;
+}
+@keyframes em-rise {
+  to { opacity: 1; transform: translateY(0) rotate(0deg); }
 }
 @keyframes shimmer-sweep {
   0%   { background-position: 0% 50%; }
@@ -562,7 +567,7 @@ section {
   .reveal, .message-card, .message-text, .message-quote, .message-sig, .closing-heart, .closing-title, .closing-sub, .stars-row {
     opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important;
   }
-  .hero-eyebrow, .hero-title, .hero-date, .candle-wrap, .hero-scroll, .hero-title .word-inner {
+  .hero-eyebrow, .hero-title, .hero-date, .candle-wrap, .hero-scroll, .hero-title .word-inner, .hero-title em {
     opacity: 1 !important; animation: none !important; transform: none !important;
   }
   .cursor-spark { display: none !important; }
