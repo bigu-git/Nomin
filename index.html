@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="A birthday page for Nomin." />
+<meta name="theme-color" content="#fdfbf7" />
 <title>Happy 19th Birthday, Nomin 🌸</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,12 +15,14 @@
 
 <canvas id="petals-canvas"></canvas>
 
-<button id="music-btn" aria-label="Toggle music">
-  <span class="note">♪</span>
-  <div id="music-pulse"></div>
+<button id="music-btn" type="button" aria-label="Toggle music" aria-pressed="false">
+  <span class="note" aria-hidden="true">♪</span>
+  <span id="music-pulse" aria-hidden="true"></span>
 </button>
 
-<audio id="bg-music" src="music_mp3.mov" loop preload="none"></audio>
+<audio id="bg-music" loop preload="none">
+  <source src="music.mp3" type="audio/mpeg" />
+</audio>
 
 <section id="hero">
   <div class="candle-wrap">
@@ -36,7 +40,7 @@
     Happy<br/>19th Birthday,<br/><em>Nomin</em>
   </h1>
 
-  <p class="hero-date">Миний хайр &nbsp;·&nbsp; My Love</p>
+  <p class="hero-date"><span lang="mn">Миний хайр</span> &nbsp;·&nbsp; My Love</p>
 
   <div class="hero-scroll">
     <span>Scroll</span>
@@ -44,12 +48,12 @@
   </div>
 </section>
 
-<section id="message">
+<section id="message" lang="mn">
   <p class="section-tag reveal">Зөвхөн чамд зориулав</p>
   <h2 class="section-title reveal">Миний үнэт Номин,</h2>
 
   <div class="message-card reveal">
-    <span class="message-quote">"</span>
+    <span class="message-quote" aria-hidden="true">"</span>
 
     <p class="message-text">
       Өнөөдөр чи минь арван есөн нас хүрч байна. Өглөө бүр инээмсэглэн сэрэх миний хамгийн үзэсгэлэнтэй шалтгаан бол чи юм шүү. Зөвхөн чиний үзэсгэлэнтэй төрх төдийгүй — чиний инээмсэглэлд орших тэр дулаахан мэдрэмж, дуртай зүйлсийнхээ талаар ярих үед нүдэнд чинь гэрэлтэх тэр цог золбоо, өөрөө ч анзаардаггүй тэр чимээгүйхэн хэрнээ хүчирхэг зан чанараар чинь би өдөр бүр бахархдаг.
@@ -63,12 +67,12 @@
       Орчлон ертөнцөд орших хамгийн нандин, зөөлөн бүхэн зөвхөн чамд минь зориулагдаасай. Чиний сайхан сэтгэлд багтах тэр их баяр баясгалан, хайр дурлалыг би чамдаа хүсэж байна. Өнөөдөр ч, бас маргааш ч чамайг хэчнээн их, хязгааргүй гүн гүнзгий хайрладаг болохыг минь мэдрээсэй гэж хүснэ.
     </p>
 
-    <span class="message-sig">— Always yours ✦</span>
+    <span class="message-sig" lang="en">— Always yours ✦</span>
   </div>
 </section>
 
 <section id="closing">
-  <span class="closing-heart reveal">🤍</span>
+  <span class="closing-heart reveal" aria-hidden="true">🤍</span>
 
   <h2 class="closing-title reveal">
     Here's to nineteen years<br/>of you being wonderful.
