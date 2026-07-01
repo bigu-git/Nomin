@@ -86,7 +86,12 @@
 /* ═══════════ FLOATING PETALS CANVAS ═══════════ */
 (function () {
   const canvas = document.getElementById('petals-canvas');
-  const ctx    = canvas.getContext('2d');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return; /* graceful no-op on the rare browser without 2D canvas support */
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   let dpr;
 
   const SYMS   = ['✿', '✧', '♡', '·', '✦', '❀', '✽'];
@@ -102,13 +107,16 @@
 
   let pointerX = -9999, pointerY = -9999;
   const hasFinePointer = !window.matchMedia('(pointer: coarse)').matches;
-  if (hasFinePointer) {
+  if (hasFinePointer && !reduceMotion) {
     window.addEventListener('mousemove', e => { pointerX = e.clientX; pointerY = e.clientY; }, { passive: true });
     window.addEventListener('mouseleave', () => { pointerX = -9999; pointerY = -9999; });
   }
 
   function resize() {
-    dpr = window.devicePixelRatio || 1;
+    /* Cap the device pixel ratio: on 3x/4x phones an uncapped dpr allocates
+       a canvas buffer many times larger than what's visually perceptible,
+       which is pure wasted fill-rate on every frame. 2x already looks crisp. */
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width  = window.innerWidth  * dpr;
     canvas.height = window.innerHeight * dpr;
     canvas.style.width  = window.innerWidth  + 'px';
@@ -184,8 +192,14 @@
       ctx.globalAlpha = Math.max(0, this.op);
       ctx.font = `${this.size}px serif`;
       ctx.fillStyle = this.color;
-      ctx.shadowColor = 'rgba(255,255,255,0.6)';
-      ctx.shadowBlur  = 3;
+      /* Soft glow is reserved for the fewer, short-lived celebratory burst
+         petals — shadowBlur is comparatively costly per-draw, and with up
+         to ~38 ambient petals redrawn every frame it's not worth paying for
+         a glow that's barely visible at their smaller size anyway. */
+      if (this.burst) {
+        ctx.shadowColor = 'rgba(255,255,255,0.6)';
+        ctx.shadowBlur  = 3;
+      }
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(this.sym, 0, 0);
@@ -200,11 +214,18 @@
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(resize, 150);
+    resizeTimer = setTimeout(reduceMotion ? renderStatic : resize, 150);
   });
   resize(); /* seeds ambient petals, sets dpr, and avoids a NaN clearRect on first frame */
 
-  (function loop(t) {
+  function renderStatic() {
+    resize();
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    ps.forEach(p => p.draw());
+  }
+
+  let rafId = null;
+  function loop(t) {
     const windX = Math.sin(t * 0.00035) * 0.4;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     for (let i = ps.length - 1; i >= 0; i--) {
@@ -212,14 +233,36 @@
       ps[i].draw();
       if (ps[i].dead()) ps.splice(i, 1);
     }
-    requestAnimationFrame(loop);
-  })(0);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  if (reduceMotion) {
+    /* Honor the OS-level motion preference: show the petals as a gently
+       scattered, static decoration instead of a continuously drifting
+       animation loop. */
+    renderStatic();
+  } else {
+    rafId = requestAnimationFrame(loop);
+
+    /* Pause the render loop while the tab is hidden — an invisible canvas
+       has no reason to keep spending CPU/battery every frame. */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+      } else if (rafId === null) {
+        rafId = requestAnimationFrame(loop);
+      }
+    });
+  }
 
   /* Touch / click burst */
   function burst(x, y) {
-    const n = 7 + Math.floor(Math.random() * 5);
-    for (let i = 0; i < n; i++) ps.push(new Petal({ x, y }));
-    /* White ripple */
+    if (!reduceMotion) {
+      const n = 7 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < n; i++) ps.push(new Petal({ x, y }));
+    }
+    /* White ripple — always shown as tap feedback; its own animation is
+       already collapsed to near-zero duration under reduced motion via CSS. */
     const r = document.createElement('div');
     r.className = 'ripple';
     r.style.cssText = `width:90px;height:90px;left:${x-45}px;top:${y-45}px`;
@@ -269,64 +312,125 @@
         io.unobserve(e.target);
       }
     });
-  }, { threshold: 0.12 });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 })();
 
-/* ═══════════ MUSIC — WEB AUDIO API WRAPPER ═══════════ */
+/* ═══════════ MUSIC — PLAYBACK + LIVE AUDIO-REACTIVE EQUALIZER ═══════════ */
 (function () {
-  const btn  = document.getElementById('music-btn');
+  const btn = document.getElementById('music-btn');
   const note = btn.querySelector('.note');
   const audio = document.getElementById('bg-music');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* inject a tiny equalizer visualizer purely for animation flair */
+  /* Tiny equalizer visualizer: animates via a canned CSS loop by default,
+     and switches to real per-frame amplitude data once the analyser is up. */
   const eq = document.createElement('span');
   eq.className = 'eq-bars';
   eq.innerHTML = '<span></span><span></span><span></span>';
   btn.appendChild(eq);
+  const eqBars = eq.querySelectorAll('span');
 
   let playing = false;
+  let audioFailed = false;
   let actx = null;
-  let sourceNode = null;
+  let analyser = null;
+  let freqData = null;
+  let eqRafId = null;
+
+  /* If the audio file itself fails to load (missing file, decode error),
+     disable the control instead of leaving a button that silently does nothing. */
+  audio.addEventListener('error', () => {
+    audioFailed = true;
+    btn.setAttribute('aria-label', 'Music unavailable');
+    btn.setAttribute('disabled', '');
+    btn.style.opacity = '0.45';
+    btn.style.cursor = 'default';
+  });
+
+  function average(arr, start, end) {
+    let sum = 0;
+    for (let i = start; i < end; i++) sum += arr[i];
+    return sum / (end - start);
+  }
+
+  function tickEqualizer() {
+    if (!playing || !analyser) return;
+    analyser.getByteFrequencyData(freqData);
+    const bands = [
+      average(freqData, 0, 3),
+      average(freqData, 3, 8),
+      average(freqData, 8, freqData.length),
+    ];
+    bands.forEach((v, i) => {
+      eqBars[i].style.height = (3 + (v / 255) * 8).toFixed(1) + 'px'; /* 3px–11px, matching the original CSS range */
+    });
+    eqRafId = requestAnimationFrame(tickEqualizer);
+  }
+
+  function startEqualizer() {
+    if (reduceMotion || !analyser) return; /* keep the gentle static CSS fallback under reduced motion */
+    eq.classList.add('js-driven');
+    if (eqRafId === null) eqRafId = requestAnimationFrame(tickEqualizer);
+  }
+  function stopEqualizer() {
+    if (eqRafId !== null) { cancelAnimationFrame(eqRafId); eqRafId = null; }
+  }
+
+  function syncUI() {
+    btn.classList.toggle('playing', playing);
+    btn.setAttribute('aria-pressed', String(playing));
+    btn.setAttribute('aria-label', playing ? 'Pause background music' : 'Play background music');
+    note.textContent = playing ? '♫' : '♪';
+    btn.classList.remove('note-punch');
+    void btn.offsetWidth; /* restart animation */
+    btn.classList.add('note-punch');
+  }
 
   btn.addEventListener('click', () => {
-    /* Initialize AudioContext purely on user interaction */
-    if (!actx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      actx = new AudioContext();
-      sourceNode = actx.createMediaElementSource(audio);
-      sourceNode.connect(actx.destination);
-    }
+    if (audioFailed) return;
 
-    function syncUI() {
-      btn.classList.toggle('playing', playing);
-      btn.setAttribute('aria-pressed', String(playing));
-      note.textContent = playing ? '♫' : '♪';
-      btn.classList.remove('note-punch');
-      void btn.offsetWidth; /* restart animation */
-      btn.classList.add('note-punch');
+    /* Initialize AudioContext + analyser purely on user interaction. The
+       analyser drives the real equalizer bars; if Web Audio isn't available
+       or throws for any reason, we fall back to plain <audio> playback and
+       the original CSS eq animation — the toggle itself never breaks. */
+    if (!actx) {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        actx = new AudioContext();
+        const sourceNode = actx.createMediaElementSource(audio);
+        analyser = actx.createAnalyser();
+        analyser.fftSize = 32;
+        analyser.smoothingTimeConstant = 0.8;
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        sourceNode.connect(analyser);
+        analyser.connect(actx.destination);
+      } catch (err) {
+        console.warn('Web Audio unavailable, falling back to basic playback:', err);
+        actx = null;
+        analyser = null;
+      }
     }
 
     const wantsToPlay = !playing;
 
     if (wantsToPlay) {
       /* resume context first so audio is audible as soon as playback starts */
-      const resumeIfNeeded = actx.state === 'suspended' ? actx.resume() : Promise.resolve();
+      const resumeIfNeeded = actx && actx.state === 'suspended' ? actx.resume() : Promise.resolve();
       resumeIfNeeded
         .then(() => audio.play())
-        .then(() => { playing = true; syncUI(); })
+        .then(() => { playing = true; syncUI(); startEqualizer(); })
         .catch(err => {
-          console.error("Audio playback failed:", err);
+          console.error('Audio playback failed:', err);
           playing = false;
           syncUI();
         });
     } else {
       audio.pause();
       /* explicitly suspend context for performance cleanup */
-      if (actx.state === 'running') {
-        actx.suspend();
-      }
+      if (actx && actx.state === 'running') actx.suspend();
       playing = false;
+      stopEqualizer();
       syncUI();
     }
   });
