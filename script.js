@@ -35,28 +35,48 @@
 })();
 
 /* ═══════════ POINTER PARALLAX (hero glow + candle) ═══════════ */
+/* Smoothed with per-frame lerp rather than raw CSS-transition retargeting:
+   a transition restarted on every mousemove mostly plays only the first
+   sliver of its (fast-starting) easing curve before being redirected again,
+   which reads closer to direct 1:1 tracking than a graceful drift. Easing
+   the value itself, frame by frame, gives a consistent, natural-feeling lag
+   regardless of how often the pointer position updates. */
 (function () {
   const root = document.documentElement;
-  let ticking = false;
   const MAX = 14;
+  const SMOOTHING = 0.09; /* lower = laggier/dreamier, higher = snappier */
 
-  function apply(nx, ny) {
-    root.style.setProperty('--px', (nx * MAX).toFixed(2) + 'px');
-    root.style.setProperty('--py', (ny * MAX).toFixed(2) + 'px');
+  let targetX = 0, targetY = 0;
+  let curX = 0, curY = 0;
+  let rafId = null;
+
+  function tick() {
+    curX += (targetX - curX) * SMOOTHING;
+    curY += (targetY - curY) * SMOOTHING;
+    root.style.setProperty('--px', (curX * MAX).toFixed(2) + 'px');
+    root.style.setProperty('--py', (curY * MAX).toFixed(2) + 'px');
+
+    if (Math.abs(targetX - curX) > 0.0004 || Math.abs(targetY - curY) > 0.0004) {
+      rafId = requestAnimationFrame(tick);
+    } else {
+      rafId = null; /* settled — stop spending frames until it moves again */
+    }
+  }
+
+  function requestTick() {
+    if (rafId === null) rafId = requestAnimationFrame(tick);
   }
 
   window.addEventListener('mousemove', e => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const nx = (e.clientX / window.innerWidth - 0.5) * 2;
-      const ny = (e.clientY / window.innerHeight - 0.5) * 2;
-      apply(nx, ny);
-      ticking = false;
-    });
+    targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+    targetY = (e.clientY / window.innerHeight - 0.5) * 2;
+    requestTick();
   }, { passive: true });
 
-  window.addEventListener('mouseleave', () => apply(0, 0));
+  window.addEventListener('mouseleave', () => {
+    targetX = 0; targetY = 0;
+    requestTick();
+  });
 })();
 
 /* ═══════════ CURSOR SPARKLE TRAIL (desktop pointer only) ═══════════ */
