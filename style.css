@@ -520,9 +520,14 @@ section {
 .frame-photo {
   aspect-ratio: 1 / 1;
   border-radius: 2px;
-  background: linear-gradient(150deg, var(--champagne) 0%, var(--rose-light) 55%, var(--soft-gold) 100%);
+  background-color: var(--bg-ivory);
+  background-image:
+    radial-gradient(ellipse 80% 55% at 22% 18%, rgba(252,228,235,0.7) 0%, transparent 62%),
+    radial-gradient(ellipse 70% 60% at 82% 42%, rgba(234,216,200,0.65) 0%, transparent 62%),
+    radial-gradient(ellipse 65% 55% at 42% 88%, rgba(252,228,235,0.55) 0%, transparent 62%);
   position: relative;
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(196,148,78,0.16), inset 0 2px 8px rgba(74,58,56,0.06);
 }
 .frame-photo::after {
   content: '✦';
@@ -531,8 +536,10 @@ section {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
-  color: rgba(255,255,255,0.8);
+  font-size: 1.3rem;
+  color: var(--gold);
+  opacity: 0.5;
+  text-shadow: 0 2px 6px rgba(196,148,78,0.2);
 }
 
 /* ─ music player card ─ */
@@ -636,9 +643,14 @@ section {
 .player-toggle .icon-play,
 .player-toggle .icon-pause { display: block; }
 
+@media (max-width: 480px) {
+  .collage-grid { gap: 16px; margin-top: 32px; }
+}
+
 @media (max-width: 380px) {
-  .collage-grid { gap: 14px; }
-  .player-card { padding: 18px 14px 14px; }
+  .collage-grid { gap: 12px; margin-top: 28px; }
+  .aesthetic-frame { padding: 7px 7px 20px; }
+  .player-card { padding: 16px 12px 12px; }
 }
 
 /* ══════════════ CLOSING ══════════════ */
