@@ -436,6 +436,17 @@
   });
 })();
 
+/* ═══════════ AESTHETIC COLLAGE — polaroid tilt jitter ═══════════ */
+/* Nudges each frame's printed --tilt by a small random amount so the
+   stack reads like a hand-arranged pile rather than a fixed pattern. */
+(function () {
+  document.querySelectorAll('.aesthetic-frame').forEach(frame => {
+    const base = parseFloat(frame.style.getPropertyValue('--tilt')) || 0;
+    const jitter = (Math.random() - 0.5) * 3; /* ± 1.5deg */
+    frame.style.setProperty('--tilt', `${(base + jitter).toFixed(2)}deg`);
+  });
+})();
+
 /* ═══════════ AESTHETIC COLLAGE — decorative player card toggle ═══════════ */
 /* Purely visual (play/pause icon swap on the collage player card); it is
    not wired to real playback — the floating #music-btn above handles that. */
