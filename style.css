@@ -543,11 +543,25 @@ section {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 1;
   background:
     linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 32%),
     radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(74,58,56,0.08) 100%);
   pointer-events: none;
 }
+.frame-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 0;
+}
+
+.frame-photo:has(img)::after {
+  content: none;
+}
+
 .frame-photo::after {
   content: '✦';
   position: absolute;
